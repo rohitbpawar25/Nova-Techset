@@ -1,3 +1,3 @@
 # Nova-Techset
 
-MCQ Generation :- Working on MCQ generation for Expert Hub; this module generates MCQs using a model trained on Phi.
+MCQ Generation :- Working on MCQ Generation using Unsloth Phi + Chain-of-Thought (CoT)
