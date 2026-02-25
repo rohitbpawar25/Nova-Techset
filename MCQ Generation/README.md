@@ -1,273 +1,234 @@
-# MCQ Generation
+# **MCQ Generation using Unsloth Phi + Chain-of-Thought (CoT)**
 
-MCQ Generation using Unsloth Phi + Chain-of-Thought (CoT)
+## **Purpose of This Document**
 
-Purpose of This Document
+This document explains **both notebooks step by step** so the team can:
 
-This document explains both notebooks step by step so the team can:
+* Understand the **training pipeline** (fine-tuning Phi using Unsloth + CoT)
+* Understand the **inference pipeline** (MCQ generation)
+* Understand how the **Streamlit UI** is built on top of the trained model
 
-Understand the training pipeline (fine-tuning Phi using Unsloth + CoT)
+The goal is that **any team member can read this and reproduce or extend the system**.
 
-Understand the inference pipeline (MCQ generation)
+## **High-Level Architecture**
 
-Understand how the Streamlit UI is built on top of the trained model
+1. **Dataset Preparation (CoT-based MCQs)**
+2. **Model Fine-Tuning (Unsloth + TRL)**
+3. **Model Saving & Export**
+4. **Inference Pipeline (MCQ Generation)**
+5. **Streamlit Application (UI Layer)**
 
-The goal is that any team member can read this and reproduce or extend the system.
+## **Notebook 1: MCQ\_Generation\_Unsloth\_phi\_COT.ipynb**
 
-High-Level Architecture
+### **Step 1: Environment Setup**
 
-Dataset Preparation (CoT-based MCQs)
+pip install unsloth accelerate bitsandbytes transformers datasets trl
 
-Model Fine-Tuning (Unsloth + TRL)
+**Why?**
 
-Model Saving & Export
+* unsloth → Memory-efficient LLM fine-tuning
+* trl → Trainer utilities for instruction/CoT tuning
+* bitsandbytes → 4-bit / 8-bit quantization
 
-Inference Pipeline (MCQ Generation)
+### **Step 2: Dataset Folder Creation**
 
-Streamlit Application (UI Layer)
+os.mkdir('cot\_dataset')
 
-Notebook 1: MCQ_Generation_Unsloth_phi_COT.ipynb
+**Purpose:**
 
-Step 1: Environment Setup
+* Central directory for Chain-of-Thought MCQ training data
 
-pip install unsloth accelerate bitsandbytes transformers datasets trl 
+### **Step 3: Dataset Loading & Formatting**
 
-Why?
+* JSON-based MCQ samples
+* Each record contains:
+  + instruction
+  + input (skill + experience)
+  + output (MCQs with reasoning)
 
-unsloth → Memory-efficient LLM fine-tuning
+**Key Idea:**
 
-trl → Trainer utilities for instruction/CoT tuning
-
-bitsandbytes → 4-bit / 8-bit quantization
-
-Step 2: Dataset Folder Creation
-
-os.mkdir('cot_dataset') 
-
-Purpose:
-
-Central directory for Chain-of-Thought MCQ training data
-
-Step 3: Dataset Loading & Formatting
-
-JSON-based MCQ samples
-
-Each record contains:
-
-instruction
-
-input (skill + experience)
-
-output (MCQs with reasoning)
-
-Key Idea:
-
-The model is trained to reason before answering (CoT)
+* The model is trained to **reason before answering** (CoT)
 
 Example (conceptual):
 
-Instruction: Generate MCQsInput: Python, 3–5 yearsOutput:Reasoning: ...Q1: ... 
+Instruction: Generate MCQs  
+Input: Python, 3–5 years  
+Output:  
+Reasoning: ...  
+Q1: ...
 
-Step 4: Model Initialization (Unsloth)
+### **Step 4: Model Initialization (Unsloth)**
 
-FastLanguageModel.from_pretrained(    model_name="phi",    load_in_4bit=True,    max_seq_length=2048) 
+FastLanguageModel.from\_pretrained(  
+ model\_name="phi",  
+ load\_in\_4bit=True,  
+ max\_seq\_length=2048  
+)
 
-Why Unsloth?
+**Why Unsloth?**
 
-Faster training
+* Faster training
+* Lower GPU memory usage
+* Optimized for instruction tuning
 
-Lower GPU memory usage
+### **Step 5: LoRA Configuration**
 
-Optimized for instruction tuning
+* Low-Rank Adaptation (LoRA)
+* Trains only **small adapter layers**
 
-Step 5: LoRA Configuration
+**Benefits:**
 
-Low-Rank Adaptation (LoRA)
+* Faster training
+* Less overfitting
+* Easy model versioning
 
-Trains only small adapter layers
-
-Benefits:
-
-Faster training
-
-Less overfitting
-
-Easy model versioning
-
-Step 6: Trainer Setup (TRL)
+### **Step 6: Trainer Setup (TRL)**
 
 Key parameters:
 
-Epochs
+* Epochs
+* Batch size
+* Learning rate
+* Gradient accumulation
 
-Batch size
+trainer.train()
 
-Learning rate
+**Output:**
 
-Gradient accumulation
+* Fine-tuned Phi model with MCQ + reasoning capability
 
-trainer.train() 
+### **Step 7: Model Saving**
 
-Output:
+model.save\_pretrained("final\_model")
 
-Fine-tuned Phi model with MCQ + reasoning capability
+**Saved Artifacts:**
 
-Step 7: Model Saving
+* Base model weights
+* LoRA adapters
+* Tokenizer
 
-model.save_pretrained("final_model") 
+### **Step 8: Model Export (ZIP)**
 
-Saved Artifacts:
+zip -r phi-mcq-skill-exp-cot.zip final\_model
 
-Base model weights
+**Purpose:**
 
-LoRA adapters
+* Easy sharing
+* Deployment-ready package
 
-Tokenizer
-
-Step 8: Model Export (ZIP)
-
-zip -r phi-mcq-skill-exp-cot.zip final_model 
-
-Purpose:
-
-Easy sharing
-
-Deployment-ready package
-
-Step 9: Inference Logic (MCQ Generation)
+### **Step 9: Inference Logic (MCQ Generation)**
 
 Core function:
 
-generate_n_mcqs(n, skill, experience)
+* generate\_n\_mcqs(n, skill, experience)
 
-Flow:
+**Flow:**
 
-Build structured prompt
-
-Call model.generate()
-
-Parse MCQs using regex
-
-Return clean output
+1. Build structured prompt
+2. Call model.generate()
+3. Parse MCQs using regex
+4. Return clean output
 
 -----------------------------------------------------------------------------------------------------------------
 
-This exacts all the process for the DPO 
+## **This exacts all the process for the DPO**
 
-Notebook 2: MCQ_Generation_Unsloth_phi_COT-Streamlit.ipynb
+## **Notebook 2: MCQ\_Generation\_Unsloth\_phi\_COT-Streamlit.ipynb**
 
-Step 1: Additional Dependencies
+### **Step 1: Additional Dependencies**
 
-pip install streamlit pyngrok 
+pip install streamlit pyngrok
 
-Why?
+**Why?**
 
-streamlit → Web UI
+* streamlit → Web UI
+* pyngrok → Public URL for Colab
 
-pyngrok → Public URL for Colab
+### **Step 2: Dataset Directory**
 
-Step 2: Dataset Directory
-
-os.makedirs('cot_dataset', exist_ok=False) 
+os.makedirs('cot\_dataset', exist\_ok=False)
 
 Ensures consistency with training pipeline
 
-Step 3: Streamlit App Creation (app.py)
+### **Step 3: Streamlit App Creation (app.py)**
 
 Key components inside app.py:
 
-1. Model Loading
+#### **1. Model Loading**
 
-FastLanguageModel.from_pretrained(MODEL_PATH) 
+FastLanguageModel.from\_pretrained(MODEL\_PATH)
 
-Loads the trained MCQ model
+Loads the **trained MCQ model**
 
-2. User Inputs
+#### **2. User Inputs**
 
 Streamlit widgets:
 
-Skill (text input)
+* Skill (text input)
+* Experience (dropdown or text)
+* Number of MCQs
 
-Experience (dropdown or text)
-
-Number of MCQs
-
-3. Prompt Construction
+#### **3. Prompt Construction**
 
 Dynamic prompt built from UI inputs:
 
-Skill
+* Skill
+* Experience
+* MCQ count
 
-Experience
+Ensures **same prompt format as training**
 
-MCQ count
+#### **4. MCQ Generation**
 
-Ensures same prompt format as training
-
-4. MCQ Generation
-
-model.generate(...) 
+model.generate(...)
 
 Includes:
 
-Max tokens
+* Max tokens
+* Temperature
+* Top-p sampling
 
-Temperature
+#### **5. Output Parsing**
 
-Top-p sampling
+* Regex-based cleaning
+* Separates reasoning & final MCQs
 
-5. Output Parsing
+### **Step 4: Streamlit App Execution**
 
-Regex-based cleaning
-
-Separates reasoning & final MCQs
-
-Step 4: Streamlit App Execution
-
-streamlit run app.py 
+streamlit run app.py
 
 Runs UI on port 8501
 
-Step 5: Public URL via Cloudflared
+### **Step 5: Public URL via Cloudflared**
 
-cloudflared tunnel --url http://localhost:8501 
+cloudflared tunnel --url <http://localhost:8501>
 
-Purpose:
+**Purpose:**
 
-Share UI with team/stakeholders
+* Share UI with team/stakeholders
 
-End-to-End Flow Summary
+## **End-to-End Flow Summary**
 
-Prepare CoT MCQ dataset
+1. Prepare CoT MCQ dataset
+2. Fine-tune Phi using Unsloth
+3. Save & export model
+4. Load model in Streamlit app
+5. Generate MCQs interactively
 
-Fine-tune Phi using Unsloth
+## **What the Team Should Remember**
 
-Save & export model
+* **Training notebook = model brain**
+* **Streamlit notebook = user interface**
+* Prompt format **must remain consistent**
+* CoT improves reasoning quality
+* LoRA keeps training efficient
 
-Load model in Streamlit app
+## **Next Possible Extensions**
 
-Generate MCQs interactively
+* DPO or RLAIF on MCQ quality
+* Skill-wise adapters
+* Difficulty-level conditioning
+* MCQ validation using rule-based checks
 
-What the Team Should Remember
-
-Training notebook = model brain
-
-Streamlit notebook = user interface
-
-Prompt format must remain consistent
-
-CoT improves reasoning quality
-
-LoRA keeps training efficient
-
-Next Possible Extensions
-
-DPO or RLAIF on MCQ quality
-
-Skill-wise adapters
-
-Difficulty-level conditioning
-
-MCQ validation using rule-based checks
-
-This document is designed to be shared directly with the team.
+**This document is designed to be shared directly with the team.**
